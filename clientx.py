@@ -1283,7 +1283,7 @@ class HTTPConnection:
         print(50*'-')
         print('                        DATA  ')
         print(50*'-')
-        print(data)
+        print(body)
         print(50*'-')
         print('                       HEADERS  ')
         print(50*'-')
