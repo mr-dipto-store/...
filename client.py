@@ -918,23 +918,26 @@ class HTTPConnection:
         del headers
 
         response = self.response_class(self.sock, method=self._method)
-        (version, code, message) = response._read_status()
+        try:
+            (version, code, message) = response._read_status()
 
-        if code != http.HTTPStatus.OK:
-            self.close()
-            raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
-        while True:
-            line = response.fp.readline(_MAXLINE + 1)
-            if len(line) > _MAXLINE:
-                raise LineTooLong("header line")
-            if not line:
-                # for sites which EOF without sending a trailer
-                break
-            if line in (b'\r\n', b'\n', b''):
-                break
+            if code != http.HTTPStatus.OK:
+                self.close()
+                raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
+            while True:
+                line = response.fp.readline(_MAXLINE + 1)
+                if len(line) > _MAXLINE:
+                    raise LineTooLong("header line")
+                if not line:
+                    # for sites which EOF without sending a trailer
+                    break
+                if line in (b'\r\n', b'\n', b''):
+                    break
 
-            if self.debuglevel > 0:
-                print('header:', line.decode())
+                if self.debuglevel > 0:
+                    print('header:', line.decode())
+        finally:
+            response.close()
 
     def connect(self):
         """Connect to the host and port specified in __init__."""
@@ -981,7 +984,7 @@ class HTTPConnection:
             print("send:", repr(data))
         if hasattr(data, "read") :
             if self.debuglevel > 0:
-                print("sendIng a read()able")
+                print("sending a readable")
             encode = self._is_textIO(data)
             if encode and self.debuglevel > 0:
                 print("encoding file using iso-8859-1")
@@ -1014,7 +1017,7 @@ class HTTPConnection:
 
     def _read_readable(self, readable):
         if self.debuglevel > 0:
-            print("sendIng a read()able")
+            print("reading a readable")
         encode = self._is_textIO(readable)
         if encode and self.debuglevel > 0:
             print("encoding file using iso-8859-1")
@@ -1279,7 +1282,8 @@ class HTTPConnection:
 
     def request(self, method, url, body=None, headers={}, *,
                 encode_chunked=False):
-        """Send a complete request to the server."""
+        """Send a complete request to the server.
+        """
         self._send_request(method, url, body, headers, encode_chunked)
 
     def _send_request(self, method, url, body, headers, encode_chunked):
@@ -1420,7 +1424,6 @@ else:
             self.cert_file = cert_file
             if context is None:
                 context = ssl._create_default_https_context()
-                context.verify_mode = ssl.CERT_NONE  # Disable certificate verification
                 # send ALPN extension to indicate HTTP/1.1 protocol
                 if self._http_vsn == 11:
                     context.set_alpn_protocols(['http/1.1'])
